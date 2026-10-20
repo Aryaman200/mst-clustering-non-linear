@@ -1,0 +1,5 @@
+.venv/
+__pycache__/
+*.pyc
+research/MST_Clustering_Mini_Project_Report.*
+*.log

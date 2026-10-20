@@ -1,0 +1,301 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MST Clustering Dashboard</title>
+<style>
+:root{
+  --bg:#f5f6f8;--panel:#ffffff;--ink:#1c2230;--muted:#667085;--line:#e3e6ec;--accent:#2563eb;--accent-ink:#fff;
+  --good:#15803d;--bad:#b91c1c;--cut:#e11d48;--edge:#b9c0cc;
+  --c0:#2563eb;--c1:#e11d48;--c2:#16a34a;--c3:#f59e0b;--c4:#7c3aed;--c5:#0891b2;--c6:#db2777;--c7:#65a30d;--noise:#98a2b3;
+}
+@media (prefers-color-scheme:dark){:root:not([data-theme=light]){
+  --bg:#0f131a;--panel:#171c26;--ink:#e6e9ef;--muted:#98a2b3;--line:#262d3a;--accent:#60a5fa;--accent-ink:#0b1220;
+  --good:#4ade80;--bad:#f87171;--cut:#fb7185;--edge:#3b4454;
+  --c0:#60a5fa;--c1:#fb7185;--c2:#4ade80;--c3:#fbbf24;--c4:#a78bfa;--c5:#22d3ee;--c6:#f472b6;--c7:#a3e635;--noise:#667085;}}
+:root[data-theme=dark]{
+  --bg:#0f131a;--panel:#171c26;--ink:#e6e9ef;--muted:#98a2b3;--line:#262d3a;--accent:#60a5fa;--accent-ink:#0b1220;
+  --good:#4ade80;--bad:#f87171;--cut:#fb7185;--edge:#3b4454;
+  --c0:#60a5fa;--c1:#fb7185;--c2:#4ade80;--c3:#fbbf24;--c4:#a78bfa;--c5:#22d3ee;--c6:#f472b6;--c7:#a3e635;--noise:#667085;}
+*{box-sizing:border-box}
+body{margin:0;background:var(--bg);color:var(--ink);font:14px/1.45 system-ui,-apple-system,"Segoe UI",Roboto,sans-serif}
+header{display:flex;align-items:center;gap:16px;padding:12px 20px;background:var(--panel);border-bottom:1px solid var(--line);position:sticky;top:0;z-index:5}
+header h1{font-size:16px;margin:0;font-weight:650}
+header .sub{color:var(--muted);font-size:12.5px}
+header .sp{flex:1}
+button,select,input{font:inherit;color:inherit}
+.btn{background:var(--accent);color:var(--accent-ink);border:0;border-radius:8px;padding:8px 14px;font-weight:600;cursor:pointer}
+.btn:disabled{opacity:.55;cursor:default}
+.btn.ghost{background:transparent;color:var(--ink);border:1px solid var(--line)}
+.layout{display:grid;grid-template-columns:300px 1fr;gap:16px;padding:16px 20px;max-width:1700px;margin:0 auto}
+@media(max-width:900px){.layout{grid-template-columns:1fr}}
+aside{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;align-self:start;position:sticky;top:64px;max-height:calc(100vh - 80px);overflow:auto}
+aside h3{font-size:11.5px;text-transform:uppercase;letter-spacing:.06em;color:var(--muted);margin:14px 0 6px}
+aside h3:first-child{margin-top:0}
+label.f{display:block;margin:8px 0 2px;font-size:12.5px;color:var(--muted)}
+label.f b{float:right;color:var(--ink);font-weight:600}
+select,input[type=number]{width:100%;padding:7px 8px;border:1px solid var(--line);border-radius:7px;background:var(--bg)}
+input[type=range]{width:100%;accent-color:var(--accent)}
+.checks label{display:flex;align-items:center;gap:7px;padding:2px 0;font-size:13px}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.tabs{display:flex;gap:4px;margin-bottom:12px;border-bottom:1px solid var(--line)}
+.tab{padding:8px 14px;border:0;background:none;cursor:pointer;color:var(--muted);border-bottom:2px solid transparent;font-weight:600}
+.tab.on{color:var(--ink);border-bottom-color:var(--accent)}
+.view{display:none}.view.on{display:block}
+.bar{display:flex;gap:14px;flex-wrap:wrap;align-items:center;margin-bottom:12px;color:var(--muted);font-size:13px}
+.bar label{display:flex;align-items:center;gap:6px}
+.grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(270px,1fr));gap:12px}
+.card{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:10px}
+.card h4{margin:0 0 6px;font-size:13px;display:flex;justify-content:space-between;gap:8px}
+.badge{font-size:11.5px;padding:1px 7px;border-radius:99px;background:var(--bg);border:1px solid var(--line);color:var(--muted);white-space:nowrap}
+.badge.good{color:var(--good);border-color:var(--good)}
+.badge.bad{color:var(--bad);border-color:var(--bad)}
+canvas{width:100%;aspect-ratio:1/1;display:block;border-radius:8px;background:var(--bg)}
+.panel{background:var(--panel);border:1px solid var(--line);border-radius:12px;padding:14px;margin-top:12px}
+.panel h4{margin:0 0 8px}
+table{border-collapse:collapse;width:100%;font-size:13px}
+th,td{padding:6px 9px;border-bottom:1px solid var(--line);text-align:right;white-space:nowrap}
+th:first-child,td:first-child{text-align:left}
+th{color:var(--muted);font-weight:600;font-size:12px}
+td.best{color:var(--good);font-weight:700}
+.scroll{overflow:auto}
+.note{color:var(--muted);font-size:12.5px;margin:6px 0 0}
+.err{background:color-mix(in srgb,var(--bad) 12%,transparent);border:1px solid var(--bad);color:var(--bad);padding:8px 12px;border-radius:8px;margin-bottom:10px;display:none}
+.insight{border-left:3px solid var(--accent);padding:6px 12px;margin-top:12px;background:var(--bg);border-radius:0 8px 8px 0}
+.legend{display:flex;gap:12px;flex-wrap:wrap;margin-top:6px;font-size:12.5px}
+.legend i{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}
+.figs{display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:12px}
+.figs img{width:100%;border-radius:8px;border:1px solid var(--line);background:#fff}
+.spin{display:none;width:14px;height:14px;border:2px solid var(--line);border-top-color:var(--accent);border-radius:50%;animation:s .7s linear infinite}
+@keyframes s{to{transform:rotate(360deg)}}
+</style>
+</head>
+<body>
+<header>
+  <div><h1>MST-Based Clustering Dashboard</h1>
+  <div class="sub">Non-linearly separable patterns · MST vs conventional partitioning</div></div>
+  <div class="sp"></div><div class="spin" id="spin"></div>
+  <button class="btn ghost" id="theme">Theme</button>
+</header>
+
+<div class="layout">
+<aside>
+  <h3>Data</h3>
+  <label class="f">Dataset</label><select id="dataset"></select>
+  <label class="f">Or upload CSV (numeric columns)</label>
+  <input type="file" id="file" accept=".csv,.txt">
+  <div class="checks"><label><input type="checkbox" id="haslabel"> last column is a label</label>
+  <label id="clearRow" style="display:none"><a href="#" id="clearCsv">clear uploaded file</a></label></div>
+  <label class="f">Points <b id="nv">600</b></label><input type="range" id="n" min="100" max="3000" step="50" value="600">
+  <label class="f">Noise <b id="noisev">0.06</b></label><input type="range" id="noise" min="0" max="0.4" step="0.01" value="0.06">
+  <div class="row2"><div><label class="f">Seed</label><input type="number" id="seed" value="0" min="0"></div>
+  <div><label class="f">Clusters k</label><input type="number" id="k" min="1" max="20" placeholder="auto"></div></div>
+
+  <h3>MST parameters</h3>
+  <label class="f">Min cluster size <b id="msv">auto</b></label><input type="range" id="min_size" min="0" max="100" step="1" value="0">
+  <label class="f">Zahn ratio threshold <b id="ratiov">3.0</b></label><input type="range" id="ratio" min="1.2" max="6" step="0.1" value="3">
+  <label class="f">Zahn depth <b id="depthv">3</b></label><input type="range" id="depth" min="1" max="6" step="1" value="3">
+  <label class="f">Mutual-reach k <b id="mrv">10</b></label><input type="range" id="mreach_k" min="3" max="30" step="1" value="10">
+
+  <h3>DBSCAN</h3>
+  <label class="f">eps <b id="epsv">0.25</b></label><input type="range" id="eps" min="0.05" max="1" step="0.01" value="0.25">
+
+  <h3>Methods</h3>
+  <div class="checks" id="methods"></div>
+  <button class="btn" id="run" style="width:100%;margin-top:14px">Run clustering</button>
+</aside>
+
+<main>
+  <div class="tabs">
+    <button class="tab on" data-v="explore">Explorer</button>
+    <button class="tab" data-v="noise">Noise sweep</button>
+    <button class="tab" data-v="scale">Scalability</button>
+    <button class="tab" data-v="report">Report results</button>
+  </div>
+  <div class="err" id="err"></div>
+
+  <section class="view on" id="v-explore">
+    <div class="bar">
+      <label><input type="checkbox" id="showMst"> show MST</label>
+      <label><input type="checkbox" id="showCut" checked> highlight cut edges</label>
+      <span id="meta"></span>
+      <span style="flex:1"></span>
+      <button class="btn ghost" id="exportCsv">Export labels (CSV)</button>
+    </div>
+    <div class="grid" id="grid"></div>
+    <div class="panel"><h4>Metrics</h4><div class="scroll"><table id="metrics"></table></div>
+      <p class="note">ARI/NMI compare with ground truth (higher is better). Silhouette and hull overlap are internal indices that assume compact, convex clusters, so they can rank a wrong convex split above a correct non-convex one.</p>
+      <div class="insight" id="insight" style="display:none"></div></div>
+  </section>
+
+  <section class="view" id="v-noise">
+    <div class="bar"><label>Dataset <select id="sweepDs" style="width:auto"></select></label>
+    <button class="btn" id="runNoise">Run noise sweep</button><span class="note">3 seeds, 400 points, ~20 s</span></div>
+    <div class="panel"><canvas id="chartNoise" style="aspect-ratio:16/8"></canvas><div class="legend" id="legNoise"></div>
+    <p class="note">Mean ARI as Gaussian noise grows. The size-guarded MST holds up until clusters actually overlap; plain single linkage and DBSCAN break earlier.</p></div>
+  </section>
+
+  <section class="view" id="v-scale">
+    <div class="bar"><button class="btn" id="runScale">Run scalability benchmark</button><span class="note">up to 16,000 points, ~15 s</span></div>
+    <div class="panel"><canvas id="chartScale" style="aspect-ratio:16/8"></canvas><div class="legend" id="legScale"></div>
+    <p class="note">Dense MST is quadratic. Using the Delaunay triangulation (2-D) gives near O(n log n).</p></div>
+  </section>
+
+  <section class="view" id="v-report">
+    <div id="reportBody"><p class="note">Loading…</p></div>
+  </section>
+</main>
+</div>
+
+<script>
+const $=id=>document.getElementById(id);
+const COLORS=['--c0','--c1','--c2','--c3','--c4','--c5','--c6','--c7'];
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim();
+function setDefaults(){const d=$('dataset').value;$('k').value=meta.default_k[d];$('noise').value=meta.default_noise[d];syncLabels()}
+let meta=null,last=null,csvText=null,timer=null,busy=false;
+
+function setErr(m){const e=$('err');e.style.display=m?'block':'none';e.textContent=m||''}
+function spin(on){$('spin').style.display=on?'block':'none';$('run').disabled=on}
+async function api(path,opts){const r=await fetch(path,opts);const j=await r.json();if(!r.ok)throw new Error(j.error||r.statusText);return j}
+
+/* ---------- controls ---------- */
+const sliders={n:'nv',noise:'noisev',min_size:'msv',ratio:'ratiov',depth:'depthv',mreach_k:'mrv',eps:'epsv'};
+function syncLabels(){for(const[k,v]of Object.entries(sliders)){let x=$(k).value;if(k==='min_size'&&x==='0')x='auto';if(k==='ratio')x=(+x).toFixed(1);$(v).textContent=x}}
+function schedule(){syncLabels();clearTimeout(timer);timer=setTimeout(run,450)}
+for(const k of Object.keys(sliders))$(k).addEventListener('input',schedule);
+['seed','k'].forEach(id=>$(id).addEventListener('change',schedule));
+$('dataset').addEventListener('change',()=>{csvText=null;$('clearRow').style.display='none';$('file').value='';setDefaults();run()});
+$('showMst').onchange=draw;$('showCut').onchange=draw;
+$('run').onclick=run;
+$('theme').onclick=()=>{const r=document.documentElement;const dark=getComputedStyle(r).getPropertyValue('--bg').trim()==='#0f131a';r.dataset.theme=dark?'light':'dark';draw();redrawCharts()};
+$('file').onchange=async e=>{const f=e.target.files[0];if(!f)return;csvText=await f.text();$('clearRow').style.display='block';$('k').value='';run()};
+$('clearCsv').onclick=e=>{e.preventDefault();csvText=null;$('file').value='';$('clearRow').style.display='none';run()};
+$('haslabel').onchange=()=>{if(csvText)run()};
+document.querySelectorAll('.tab').forEach(t=>t.onclick=()=>{
+  document.querySelectorAll('.tab').forEach(x=>x.classList.toggle('on',x===t));
+  document.querySelectorAll('.view').forEach(v=>v.classList.toggle('on',v.id==='v-'+t.dataset.v));
+  if(t.dataset.v==='report')loadReport();redrawCharts();});
+
+/* ---------- cluster run ---------- */
+function selectedMethods(){return[...document.querySelectorAll('#methods input:checked')].map(i=>i.value)}
+async function run(){
+  if(busy)return;busy=true;spin(true);setErr('');
+  const req={dataset:$('dataset').value,n:+$('n').value,noise:+$('noise').value,seed:+$('seed').value,
+    k:$('k').value?+$('k').value:null,methods:selectedMethods(),csv:csvText,has_label:$('haslabel').checked,
+    params:{min_size:+$('min_size').value,ratio:+$('ratio').value,depth:+$('depth').value,mreach_k:+$('mreach_k').value,eps:+$('eps').value}};
+  try{last=await api('/api/cluster',{method:'POST',body:JSON.stringify(req)});
+    if(!csvText&&!$('k').value)$('k').placeholder=last.k;
+    draw();table();}
+  catch(e){setErr('Error: '+e.message)}
+  finally{busy=false;spin(false)}
+}
+
+/* ---------- drawing ---------- */
+function bounds(pts){let x0=1e9,x1=-1e9,y0=1e9,y1=-1e9;for(const[p,q]of pts){x0=Math.min(x0,p);x1=Math.max(x1,p);y0=Math.min(y0,q);y1=Math.max(y1,q)}
+  const px=(x1-x0)*.05||1,py=(y1-y0)*.05||1;return[x0-px,x1+px,y0-py,y1+py]}
+function colorOf(l){return l<0?css('--noise'):css(COLORS[l%COLORS.length])}
+function paint(cv,pts,labels,m){
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  const[x0,x1,y0,y1]=bounds(pts);const sx=v=>(v-x0)/(x1-x0)*w,sy=v=>h-(v-y0)/(y1-y0)*h;
+  if(m&&m.edges&&$('showMst').checked){g.lineWidth=.8;g.strokeStyle=css('--edge');g.beginPath();
+    for(const[u,v]of m.edges){g.moveTo(sx(pts[u][0]),sy(pts[u][1]));g.lineTo(sx(pts[v][0]),sy(pts[v][1]))}g.stroke()}
+  const r=Math.max(1.6,Math.min(3.2,260/Math.sqrt(pts.length)));
+  for(let i=0;i<pts.length;i++){g.fillStyle=colorOf(labels?labels[i]:0);g.beginPath();g.arc(sx(pts[i][0]),sy(pts[i][1]),r,0,6.283);g.fill()}
+  if(m&&m.edges&&m.cut&&$('showCut').checked){g.lineWidth=2.6;g.strokeStyle=css('--cut');g.beginPath();
+    for(const i of m.cut){const[u,v]=m.edges[i];g.moveTo(sx(pts[u][0]),sy(pts[u][1]));g.lineTo(sx(pts[v][0]),sy(pts[v][1]))}g.stroke()}
+}
+function fmt(v,d=2){return v==null?'–':(+v).toFixed(d)}
+function badge(m){if(m.ARI==null)return`<span class="badge">K=${m.K}</span>`;const c=m.ARI>=.9?'good':m.ARI<.3?'bad':'';return`<span class="badge ${c}">ARI ${fmt(m.ARI)} · K=${m.K}</span>`}
+function draw(){
+  if(!last)return;const grid=$('grid');grid.innerHTML='';
+  $('meta').textContent=`${last.title} · n=${last.n} · d=${last.d} · k=${last.k}`;
+  const add=(title,labels,m,bd)=>{const c=document.createElement('div');c.className='card';
+    c.innerHTML=`<h4><span>${title}</span>${bd||''}</h4><canvas></canvas>`;grid.appendChild(c);
+    requestAnimationFrame(()=>paint(c.querySelector('canvas'),last.points,labels,m))};
+  add(last.truth?'Ground truth':'Data (no labels)',last.truth,null,'');
+  for(const[name,m]of Object.entries(last.methods)){
+    if(m.error){add(name,null,null,`<span class="badge bad">${m.error.slice(0,40)}</span>`);continue}
+    add(name,m.labels,m,badge(m)+` <span class="badge">${m.time_ms} ms</span>`)}
+}
+function table(){
+  const t=$('metrics');const ms=Object.entries(last.methods).filter(([,m])=>!m.error);
+  const best=Math.max(...ms.map(([,m])=>m.ARI??-9));
+  let h='<tr><th>Method</th><th>ARI</th><th>NMI</th><th>Silhouette</th><th>Hull overlap</th><th>K</th><th>Noise pts</th><th>Time (ms)</th></tr>';
+  for(const[n,m]of ms)h+=`<tr><td>${n}</td><td class="${m.ARI!=null&&m.ARI===best?'best':''}">${fmt(m.ARI)}</td><td>${fmt(m.NMI)}</td><td>${fmt(m.Silhouette)}</td><td>${fmt(m.Overlap)}</td><td>${m.K}</td><td>${m.noise_points}</td><td>${m.time_ms}</td></tr>`;
+  t.innerHTML=h;
+  const ins=$('insight');
+  if(last.truth&&ms.length>1){
+    const sorted=[...ms].sort((a,b)=>(b[1].ARI??-9)-(a[1].ARI??-9));
+    const bs=[...ms].sort((a,b)=>(b[1].Silhouette??-9)-(a[1].Silhouette??-9))[0];
+    let s=`Best by ARI: <b>${sorted[0][0]}</b> (${fmt(sorted[0][1].ARI)}).`;
+    if(bs[0]!==sorted[0][0]&&bs[1].Silhouette!=null)s+=` Best by silhouette would be <b>${bs[0]}</b> (${fmt(bs[1].Silhouette)}, ARI ${fmt(bs[1].ARI)}) – an example of silhouette favouring a convex split.`;
+    ins.innerHTML=s;ins.style.display='block'}else ins.style.display='none';
+}
+$('exportCsv').onclick=()=>{if(!last)return;const names=Object.keys(last.methods).filter(n=>!last.methods[n].error);
+  let c='x,y,truth,'+names.join(',')+'\n';
+  last.points.forEach((p,i)=>{c+=[p[0],p[1],last.truth?last.truth[i]:'',...names.map(n=>last.methods[n].labels[i])].join(',')+'\n'});
+  const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([c],{type:'text/csv'}));a.download='mst_clustering_labels.csv';a.click()};
+
+/* ---------- line charts ---------- */
+const charts={};
+function lineChart(cv,leg,data,opts){
+  charts[cv.id]=[cv,leg,data,opts];
+  const dpr=window.devicePixelRatio||1,w=cv.clientWidth,h=cv.clientHeight;cv.width=w*dpr;cv.height=h*dpr;
+  const g=cv.getContext('2d');g.setTransform(dpr,0,0,dpr,0,0);g.clearRect(0,0,w,h);
+  const L=52,R=14,T=12,B=40,xs=data.x;const names=Object.keys(data.series);
+  const lg=opts.log;let ys=[];names.forEach(n=>data.series[n].forEach(v=>v!=null&&ys.push(v)));
+  let y0=opts.y0??Math.min(...ys),y1=opts.y1??Math.max(...ys);
+  const fx=lg?Math.log:(v=>v),X0=fx(xs[0]),X1=fx(xs[xs.length-1]);
+  const Y=v=>lg?Math.log(v):v;const ya=Y(y0),yb=Y(y1);
+  const px=v=>L+(fx(v)-X0)/(X1-X0)*(w-L-R),py=v=>T+(1-(Y(v)-ya)/(yb-ya))*(h-T-B);
+  g.strokeStyle=css('--line');g.fillStyle=css('--muted');g.font='11px system-ui';g.lineWidth=1;g.textAlign='right';
+  const ticks=lg?[0.001,0.01,0.1,1,10].filter(v=>v>=y0&&v<=y1):[0,.2,.4,.6,.8,1].filter(v=>v>=y0-1e-9&&v<=y1+1e-9);
+  for(const v of ticks){g.beginPath();g.moveTo(L,py(v));g.lineTo(w-R,py(v));g.stroke();g.fillText(v,L-6,py(v)+4)}
+  g.textAlign='center';xs.forEach(v=>{g.fillText(v,px(v),h-B+16)});g.fillText(opts.xlabel,(L+w-R)/2,h-6);
+  g.save();g.translate(12,(T+h-B)/2);g.rotate(-Math.PI/2);g.fillText(opts.ylabel,0,0);g.restore();
+  leg.innerHTML='';
+  names.forEach((n,i)=>{const col=css(COLORS[i%COLORS.length]);g.strokeStyle=col;g.fillStyle=col;g.lineWidth=2;g.beginPath();let st=false;
+    data.series[n].forEach((v,j)=>{if(v==null)return;const X=px(xs[j]),Yy=py(Math.max(v,y0));if(!st){g.moveTo(X,Yy);st=true}else g.lineTo(X,Yy)});g.stroke();
+    data.series[n].forEach((v,j)=>{if(v==null)return;g.beginPath();g.arc(px(xs[j]),py(Math.max(v,y0)),3,0,6.283);g.fill()});
+    leg.innerHTML+=`<span><i style="background:${col}"></i>${n}</span>`});
+}
+function redrawCharts(){for(const k in charts){const[cv,leg,d,o]=charts[k];if(cv.offsetParent)lineChart(cv,leg,d,o)}if(last)draw()}
+window.addEventListener('resize',()=>{clearTimeout(window._rz);window._rz=setTimeout(redrawCharts,150)});
+
+$('runNoise').onclick=async()=>{const b=$('runNoise');b.disabled=true;b.textContent='Running…';setErr('');
+  try{const d=await api('/api/sweep/noise?dataset='+$('sweepDs').value);
+    lineChart($('chartNoise'),$('legNoise'),{x:d.levels,series:d.series},{xlabel:'noise std ('+d.dataset+')',ylabel:'ARI (mean of '+d.seeds+' seeds)',y0:0,y1:1})}
+  catch(e){setErr('Error: '+e.message)}b.disabled=false;b.textContent='Run noise sweep'};
+$('runScale').onclick=async()=>{const b=$('runScale');b.disabled=true;b.textContent='Running…';setErr('');
+  try{const d=await api('/api/sweep/scale');
+    lineChart($('chartScale'),$('legScale'),{x:d.sizes,series:d.series},{xlabel:'number of points',ylabel:'seconds (log)',log:true,y0:0.001,y1:10})}
+  catch(e){setErr('Error: '+e.message)}b.disabled=false;b.textContent='Run scalability benchmark'};
+
+/* ---------- report tab ---------- */
+let reportLoaded=false;
+async function loadReport(){
+  if(reportLoaded)return;reportLoaded=true;
+  try{const r=await api('/api/results');const M=r.main;const ds=Object.keys(M),ms=Object.keys(M[ds[0]]);
+    const tbl=(title,obj,keys,cols,get)=>{let h=`<div class="panel"><h4>${title}</h4><div class="scroll"><table><tr><th>Dataset</th>${cols.map(c=>`<th>${c}</th>`).join('')}</tr>`;
+      for(const k of keys){const vals=cols.map(c=>get(obj[k][c]));const b=Math.max(...vals);h+=`<tr><td>${k}</td>${vals.map(v=>`<td class="${v===b?'best':''}">${v.toFixed(2)}</td>`).join('')}</tr>`}return h+'</table></div></div>'};
+    let html=tbl('Adjusted Rand Index – synthetic benchmarks (from the report)',M,ds,ms,x=>x.ARI);
+    html+=tbl('Adjusted Rand Index – real data sets',r.real,Object.keys(r.real),ms,x=>x.ARI);
+    html+='<div class="panel"><h4>Figures</h4><div class="figs">'+['comparison_grid','mst_steps_two_moons','mst_steps_two_spirals','noise_robustness','scalability','outliers','sensitivity','edge_weights'].map(f=>`<a href="/figures/${f}.png" target="_blank"><img loading="lazy" src="/figures/${f}.png" alt="${f}"></a>`).join('')+'</div></div>';
+    $('reportBody').innerHTML=html}
+  catch(e){$('reportBody').innerHTML='<p class="note">Could not load results.json: '+e.message+'</p>'}
+}
+
+/* ---------- init ---------- */
+(async()=>{
+  try{meta=await api('/api/meta');
+    $('dataset').innerHTML=Object.entries(meta.datasets).map(([k,v])=>`<option value="${k}">${v}</option>`).join('');
+    $('sweepDs').innerHTML=['moons','circles','spirals'].map(k=>`<option value="${k}">${meta.datasets[k]}</option>`).join('');
+    $('methods').innerHTML=meta.methods.map(m=>`<label><input type="checkbox" value="${m}" checked onchange="schedule()"> ${m}</label>`).join('');
+    $('n').max=meta.max_points;setDefaults();run()}
+  catch(e){setErr('Cannot reach server: '+e.message)}
+})();
+</script>
+</body>
+</html>
